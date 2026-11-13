@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("PulseMart.API")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d42793334a1d063dc7b712599519501f3a450cad")]
 [assembly: System.Reflection.AssemblyProductAttribute("PulseMart.API")]
 [assembly: System.Reflection.AssemblyTitleAttribute("PulseMart.API")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
