@@ -1,0 +1,55 @@
+<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-3">
+  <div class="container">
+    <!-- Brand Logo -->
+    <a class="navbar-brand fw-bold fs-4 tracking-wide text-white" style="cursor: pointer;" (click)="navigateToSection('home')">
+      <span class="text-primary">Pulse</span>Mart
+    </a>
+
+    <!-- Mobile Toggle Button -->
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+
+    <!-- Navbar Links -->
+    <div class="collapse navbar-collapse" id="navbarContent">
+      <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-3">
+        <li class="nav-item">
+          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
+             [class.active-highlight]="activeSection === 'home'" 
+             (click)="navigateToSection('home')">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
+             [class.active-highlight]="activeSection === 'featured-products'" 
+             (click)="navigateToSection('featured-products')">Shop</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
+             [class.active-highlight]="activeSection === 'categories'" 
+             (click)="navigateToSection('categories')">Categories</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
+             [class.active-highlight]="activeSection === 'about'" 
+             (click)="navigateToSection('about')">About</a>
+        </li>
+      </ul>
+
+      <!-- Right Auth Buttons -->
+      <div class="d-flex gap-2">
+        <a class="btn btn-outline-light px-4 rounded-pill" routerLink="/login" (click)="activeSection = ''">Login</a>
+        <a class="btn btn-primary px-4 rounded-pill fw-semibold" routerLink="/register" (click)="activeSection = ''">Register</a>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- Page Content Outlet -->
+<router-outlet></router-outlet>
+
+<!-- Footer -->
+<footer class="bg-dark text-light py-4 mt-5">
+  <div class="container text-center">
+    <p class="mb-0 text-secondary">&copy; 2026 PulseMart E-Commerce. All rights reserved.</p>
+  </div>
+</footer>

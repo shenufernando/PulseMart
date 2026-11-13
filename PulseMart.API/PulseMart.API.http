@@ -1,0 +1,6 @@
+@PulseMart.API_HostAddress = http://localhost:5188
+
+GET {{PulseMart.API_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

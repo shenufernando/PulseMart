@@ -1,0 +1,11 @@
+/* Enable smooth scrolling across the page */
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+/* Highlight style only for the clicked/active navigation button */
+.nav-link.active-highlight {
+  color: #0d6efd !important;
+  font-weight: 700;
+}
