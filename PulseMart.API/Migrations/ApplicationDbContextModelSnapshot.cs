@@ -21,6 +21,41 @@ namespace PulseMart.API.Migrations
 
             SqlServerModelBuilderExtensions.UseIdentityColumns(modelBuilder);
 
+            modelBuilder.Entity("PulseMart.API.Models.Product", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Category")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("ImageUrl")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<decimal>("Price")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<int>("Stock")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("Products");
+                });
+
             modelBuilder.Entity("PulseMart.API.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -55,7 +90,7 @@ namespace PulseMart.API.Migrations
                             Id = 1,
                             Email = "admin@pulsemart.com",
                             Name = "System Admin",
-                            PasswordHash = "$2a$11$nhXHjzfp/m3r7Wj/mXlpE.E0RIlMZnVP6L8KFe/NtuyIw6MOctEc2",
+                            PasswordHash = "$2a$11$I5DXfg253IOeAlfEumMgu.S8mdoqq0G81GoiDy2AGKVGDmlri7lEa",
                             Role = "Admin"
                         });
                 });

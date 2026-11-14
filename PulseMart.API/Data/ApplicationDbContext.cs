@@ -8,19 +8,25 @@ namespace PulseMart.API.Data
         public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options) { }
 
         public DbSet<User> Users { get; set; }
+        public DbSet<Product> Products { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
 
-            // Default Admin Account එක Database එකට ඉබේම ඇතුළත් කිරීම (Data Seeding)
+            // Configure decimal precision for Product Price
+            modelBuilder.Entity<Product>()
+                .Property(p => p.Price)
+                .HasColumnType("decimal(18,2)");
+
+            // Seed default Admin account into the database
             modelBuilder.Entity<User>().HasData(
                 new User
                 {
                     Id = 1,
                     Name = "System Admin",
                     Email = "admin@pulsemart.com",
-                    // මෙතැනදී 'Admin@123' කියන password එක BCrypt වලින් Hash කරලා දාලා තියෙනවා
+                    // Hash the default password 'Admin@123' using BCrypt
                     PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
                     Role = "Admin"
                 }
