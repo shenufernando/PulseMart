@@ -50,6 +50,8 @@ namespace PulseMart.API.Controllers
         [HttpPost("login")]
         public async Task<IActionResult> Login([FromBody] LoginDto dto)
         {
+            await EnsureDefaultAdminAsync();
+
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email.ToLower() == dto.Email.ToLower());
 
             if (user == null || !BCrypt.Net.BCrypt.Verify(dto.Password, user.PasswordHash))
@@ -71,6 +73,24 @@ namespace PulseMart.API.Controllers
                     role = user.Role
                 }
             });
+        }
+
+        private async Task EnsureDefaultAdminAsync()
+        {
+            var hasAdmin = await _context.Users.AnyAsync(u => u.Role == "Admin");
+            if (!hasAdmin)
+            {
+                var admin = new User
+                {
+                    Name = "PulseMart Admin",
+                    Email = "admin@pulsemart.com",
+                    PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+                    Role = "Admin"
+                };
+
+                _context.Users.Add(admin);
+                await _context.SaveChangesAsync();
+            }
         }
 
         private string GenerateJwtToken(User user)

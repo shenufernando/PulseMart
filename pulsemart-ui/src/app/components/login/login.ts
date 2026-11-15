@@ -24,9 +24,19 @@ export class Login {
     this.loading.set(true);
 
     this.auth.login(this.email, this.password).subscribe({
-      next: () => {
+      next: (res: any) => {
         this.loading.set(false);
-        this.router.navigate(['/admin-dashboard']);
+
+        const role = (res?.user?.role || res?.role || '').toString().toLowerCase();
+        if (role) {
+          localStorage.setItem('pulsemart_role', res?.user?.role || res?.role);
+        }
+
+        if (role === 'admin') {
+          this.router.navigate(['/admin-dashboard']);
+        } else {
+          this.router.navigate(['/user-dashboard']);
+        }
       },
       error: (err: any) => {
         this.loading.set(false);
