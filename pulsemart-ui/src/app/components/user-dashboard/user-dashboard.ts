@@ -1,39 +1,61 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterLink } from '@angular/router';
-import { Product } from '../../models/product.model';
-import { ProductService } from '../../services/product.service';
-import { AuthService } from '../../services/auth.service';
+import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
+import { Product, ProductService } from '../../services/product.service';
 
 @Component({
   selector: 'app-user-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, FormsModule],
   templateUrl: './user-dashboard.html',
   styleUrl: './user-dashboard.css',
 })
 export class UserDashboard implements OnInit {
-  products = signal<Product[]>([]);
-  loading = signal(true);
+  private readonly productService = inject(ProductService);
+  private readonly router = inject(Router);
 
-  constructor(
-    public auth: AuthService,
-    public productService: ProductService,
-    private router: Router
-  ) {}
+  readonly categories = ['All', 'Electronics', 'Fashion', 'Home & Living', 'Accessories', 'General'];
+  readonly products = this.productService.products;
+
+  search = '';
+  selectedCategory = 'All';
+  readonly loading = signal(false);
+  readonly errorMessage = signal('');
+  readonly activeProduct = signal<Product | null>(null);
 
   ngOnInit(): void {
-    if (!this.auth.isAuthenticated()) {
-      this.router.navigate(['/login']);
-      return;
-    }
+    this.loadStorefront();
+  }
 
-    this.productService.getAll().subscribe({
-      next: (data) => {
-        this.products.set(data);
+  loadStorefront(): void {
+    this.loading.set(true);
+    this.errorMessage.set('');
+
+    this.productService.getProducts(this.selectedCategory, this.search).subscribe({
+      next: () => this.loading.set(false),
+      error: (err) => {
         this.loading.set(false);
+        this.errorMessage.set(err?.error?.message || 'Unable to load products.');
       },
-      error: () => this.loading.set(false),
     });
+  }
+
+  selectCategory(category: string): void {
+    this.selectedCategory = category;
+    this.loadStorefront();
+  }
+
+  openProduct(product: Product): void {
+    this.activeProduct.set(product);
+  }
+
+  closeProduct(): void {
+    this.activeProduct.set(null);
+  }
+
+  logout(): void {
+    localStorage.clear();
+    this.router.navigate(['/login']);
   }
 }

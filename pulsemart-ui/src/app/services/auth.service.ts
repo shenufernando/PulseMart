@@ -21,10 +21,13 @@ export class AuthService {
   login(email: string, password: string) {
     return this.http.post<AuthResponse>(`${this.apiUrl}/login`, { email, password }).pipe(
       tap((res) => {
-        localStorage.setItem(this.tokenKey, res.token);
-        localStorage.setItem(this.emailKey, res.email || email);
+        const token = res.token ?? '';
+        const userEmail = res.email || email;
+
+        localStorage.setItem(this.tokenKey, token);
+        localStorage.setItem(this.emailKey, userEmail);
         this.isAuthenticated.set(true);
-        this.currentUserEmail.set(res.email || email);
+        this.currentUserEmail.set(userEmail);
       })
     );
   }

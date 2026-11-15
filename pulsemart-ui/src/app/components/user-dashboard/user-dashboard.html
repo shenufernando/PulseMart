@@ -1,25 +1,94 @@
-<div class="container">
-  <div class="header-card">
+<div class="store-shell">
+  <header class="store-header">
     <div>
-      <h2>User Dashboard</h2>
-      <p class="muted">
-        Signed in as <strong>{{ auth.currentUserEmail() || 'Authenticated User' }}</strong>
-      </p>
+      <h1>PulseMart Storefront</h1>
+      <p>Live items published from Admin Dashboard</p>
     </div>
-    <div class="actions">
-      <a routerLink="/" class="btn btn-outline">Browse Store</a>
-      <a routerLink="/admin-dashboard" class="btn btn-primary">Admin Panel</a>
-    </div>
-  </div>
+    <button type="button" class="btn-outline" (click)="logout()">Sign Out</button>
+  </header>
 
-  <div class="stats-grid">
-    <div class="stat-card">
-      <span class="label">Available Catalog Items</span>
-      <span class="value">{{ products().length }}</span>
+  <section class="filter-bar">
+    <input
+      type="search"
+      [(ngModel)]="search"
+      (ngModelChange)="loadStorefront()"
+      placeholder="Search items by name or details..."
+      aria-label="Search items"
+    />
+
+    <div class="category-list" role="tablist" aria-label="Categories">
+      @for (category of categories; track category) {
+        <button
+          type="button"
+          class="cat-pill"
+          [class.active]="selectedCategory === category"
+          (click)="selectCategory(category)"
+        >
+          {{ category }}
+        </button>
+      }
     </div>
-    <div class="stat-card">
-      <span class="label">Session Status</span>
-      <span class="value active-text">JWT Active</span>
+  </section>
+
+  @if (errorMessage()) {
+    <div class="alert error">{{ errorMessage() }}</div>
+  }
+
+  @if (loading()) {
+    <div class="state-box">Loading items...</div>
+  } @else if (products().length === 0) {
+    <div class="state-box">
+      <h3>No items available yet</h3>
+      <p>Items published by Admin will appear here automatically.</p>
     </div>
-  </div>
+  } @else {
+    <section class="product-grid">
+      @for (product of products(); track product.id) {
+        <article class="product-card" (click)="openProduct(product)">
+          <div class="card-image">
+            @if (product.imageUrl) {
+              <img [src]="product.imageUrl" [alt]="product.name" />
+            } @else {
+              <div class="no-image">{{ product.name.slice(0, 2).toUpperCase() }}</div>
+            }
+            <span class="badge">{{ product.category }}</span>
+          </div>
+
+          <div class="card-body">
+            <h2>{{ product.name }}</h2>
+            <p class="desc">{{ product.description }}</p>
+
+            <div class="card-footer">
+              <strong class="price">\${{ product.price | number:'1.2-2' }}</strong>
+              <span class="stock" [class.out]="product.stock === 0">
+                {{ product.stock > 0 ? product.stock + ' in stock' : 'Out of stock' }}
+              </span>
+            </div>
+          </div>
+        </article>
+      }
+    </section>
+  }
+
+  @if (activeProduct(); as product) {
+    <div class="modal-backdrop" (click)="closeProduct()">
+      <div class="modal-card" (click)="$event.stopPropagation()">
+        @if (product.imageUrl) {
+          <img [src]="product.imageUrl" [alt]="product.name" class="modal-image" />
+        }
+        <div class="modal-body">
+          <span class="badge inline">{{ product.category }}</span>
+          <h2>{{ product.name }}</h2>
+          <p class="modal-desc">{{ product.description }}</p>
+          <div class="card-footer">
+            <strong class="price">\${{ product.price | number:'1.2-2' }}</strong>
+            <span>{{ product.stock }} available</span>
+          </div>
+          <button type="button" class="btn-primary full" (click)="closeProduct()">
+            Close
+          </button>
+        </div>
+      </div>
+    </div>
+  }
 </div>

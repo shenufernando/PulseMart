@@ -1,1 +1,194 @@
-<p>admin-dashboard works!</p>
+<div class="admin-shell">
+  <aside class="sidebar">
+    <div class="brand">
+      <span class="brand-dot"></span>
+      <div>
+        <h2>PulseMart</h2>
+        <small>Admin Workspace</small>
+      </div>
+    </div>
+
+    <nav class="nav-list">
+      <button type="button" class="nav-item active">Item Posts & Inventory</button>
+      <button type="button" class="nav-item" (click)="goToUserDashboard()">User Storefront</button>
+    </nav>
+
+    <button type="button" class="logout-btn" (click)="logout()">Sign Out</button>
+  </aside>
+
+  <main class="main-content">
+    <header class="topbar">
+      <div>
+        <h1>Item Post Studio</h1>
+        <p>Publish items with image and details — live on User Dashboard</p>
+      </div>
+      <span class="role-badge">ADMIN</span>
+    </header>
+
+    <section class="kpi-grid">
+      <div class="kpi-card">
+        <span class="kpi-label">Published Items</span>
+        <strong class="kpi-value">{{ products().length }}</strong>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Total Stock Units</span>
+        <strong class="kpi-value">{{ totalStock() }}</strong>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Catalog Value</span>
+        <strong class="kpi-value">\${{ totalValue() | number:'1.2-2' }}</strong>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Low Stock (&lt; 10)</span>
+        <strong class="kpi-value warn">{{ lowStockCount() }}</strong>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Create New Item Post</h2>
+
+      @if (successMessage()) {
+        <div class="alert success">{{ successMessage() }}</div>
+      }
+      @if (errorMessage()) {
+        <div class="alert error">{{ errorMessage() }}</div>
+      }
+
+      <form (ngSubmit)="publishItem()" class="post-form">
+        <div class="form-grid">
+          <div class="field">
+            <label for="item-name">Item Name</label>
+            <input
+              id="item-name"
+              type="text"
+              [(ngModel)]="name"
+              name="name"
+              placeholder="Wireless Headphones"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="item-category">Category</label>
+            <select id="item-category" [(ngModel)]="category" name="category">
+              @for (cat of categories; track cat) {
+                <option [value]="cat">{{ cat }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="field">
+            <label for="item-price">Price (USD)</label>
+            <input
+              id="item-price"
+              type="number"
+              [(ngModel)]="price"
+              name="price"
+              min="0.01"
+              step="0.01"
+              placeholder="99.99"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="item-stock">Stock Quantity</label>
+            <input
+              id="item-stock"
+              type="number"
+              [(ngModel)]="stock"
+              name="stock"
+              min="0"
+              placeholder="20"
+              required
+            />
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="item-description">Item Details</label>
+          <textarea
+            id="item-description"
+            [(ngModel)]="description"
+            name="description"
+            rows="3"
+            placeholder="Write product details, specifications, or notes..."
+          ></textarea>
+        </div>
+
+        <div class="upload-row">
+          <div class="field">
+            <label for="item-image">Item Image</label>
+            <input
+              id="item-image"
+              type="file"
+              accept="image/*"
+              (change)="onFileSelected($event)"
+            />
+          </div>
+
+          @if (previewUrl()) {
+            <div class="preview-box">
+              <img [src]="previewUrl()!" alt="Selected item preview" />
+              <span>Preview Ready</span>
+            </div>
+          }
+        </div>
+
+        <button type="submit" class="btn-primary" [disabled]="submitting()">
+          {{ submitting() ? 'Publishing...' : 'Publish Item' }}
+        </button>
+      </form>
+    </section>
+
+    <section class="card">
+      <h2>Published Items ({{ products().length }})</h2>
+
+      @if (products().length === 0) {
+        <p class="empty-state">No item posts yet. Publish your first item above.</p>
+      } @else {
+        <div class="table-wrap">
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Item & Details</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Stock</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (item of products(); track item.id) {
+                <tr>
+                  <td>
+                    @if (item.imageUrl) {
+                      <img [src]="item.imageUrl" [alt]="item.name" class="thumb" />
+                    } @else {
+                      <div class="thumb-empty">{{ item.name.slice(0, 2).toUpperCase() }}</div>
+                    }
+                  </td>
+                  <td>
+                    <strong>{{ item.name }}</strong>
+                    <p class="sub-desc">{{ item.description }}</p>
+                  </td>
+                  <td><span class="tag">{{ item.category }}</span></td>
+                  <td>\${{ item.price | number:'1.2-2' }}</td>
+                  <td>
+                    <span [class.low-stock]="item.stock < 10">{{ item.stock }} in stock</span>
+                  </td>
+                  <td>
+                    <button type="button" class="btn-danger" (click)="deleteItem(item.id)">
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      }
+    </section>
+  </main>
+</div>

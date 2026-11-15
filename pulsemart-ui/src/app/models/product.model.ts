@@ -5,11 +5,12 @@ export interface Product {
   price: number;
   stock: number;
   category: string;
-  imageUrl?: string;
+  imageUrl: string;
 }
 
 export interface AuthResponse {
   token: string;
   email?: string;
+  fullName?: string;
   role?: string;
 }
