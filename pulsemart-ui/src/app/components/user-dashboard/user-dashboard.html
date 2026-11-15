@@ -1,1 +1,25 @@
-<p>user-dashboard works!</p>
+<div class="container">
+  <div class="header-card">
+    <div>
+      <h2>User Dashboard</h2>
+      <p class="muted">
+        Signed in as <strong>{{ auth.currentUserEmail() || 'Authenticated User' }}</strong>
+      </p>
+    </div>
+    <div class="actions">
+      <a routerLink="/" class="btn btn-outline">Browse Store</a>
+      <a routerLink="/admin-dashboard" class="btn btn-primary">Admin Panel</a>
+    </div>
+  </div>
+
+  <div class="stats-grid">
+    <div class="stat-card">
+      <span class="label">Available Catalog Items</span>
+      <span class="value">{{ products().length }}</span>
+    </div>
+    <div class="stat-card">
+      <span class="label">Session Status</span>
+      <span class="value active-text">JWT Active</span>
+    </div>
+  </div>
+</div>

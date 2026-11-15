@@ -14,6 +14,17 @@ builder.Services.AddControllers();
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Configure CORS for Angular frontend (pulsemart-ui)
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowAngularApp", policy =>
+    {
+        policy.WithOrigins("http://localhost:4200", "http://localhost:63689")
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
+
 // Configure JWT Bearer Authentication
 var jwtKey = builder.Configuration["Jwt:Key"] ?? "SuperSecretKeyForPulseMart2026!@#$%";
 var jwtIssuer = builder.Configuration["Jwt:Issuer"] ?? "PulseMartAPI";
@@ -81,7 +92,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 
-app.UseHttpsRedirection();
+// Commented out so HTTP preflight requests from Angular (http://localhost:63689)
+// to http://localhost:5206 are not redirected before CORS runs
+// app.UseHttpsRedirection();
+
+app.UseCors("AllowAngularApp");
 
 app.UseAuthentication();
 app.UseAuthorization();

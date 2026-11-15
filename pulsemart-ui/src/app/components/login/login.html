@@ -1,1 +1,69 @@
-<p>login works!</p>
+<div class="auth-page">
+  <div class="auth-shell">
+    <!-- Left Visual Showcase -->
+    <aside class="auth-visual">
+      <div class="visual-overlay"></div>
+      <img
+        src="https://images.unsplash.com/photo-1556742049-0cfed4f6a45d?auto=format&fit=crop&w=900&q=80"
+        alt="PulseMart Commerce"
+        class="visual-img"
+      />
+      <div class="visual-content">
+        <span class="pill">PulseMart Commerce</span>
+        <h1>Smart Inventory & Storefront</h1>
+        <p>Manage products, stock levels, and live catalog uploads from one clean workspace.</p>
+        <ul class="perks">
+          <li>JWT Secured Authentication</li>
+          <li>Instant Product & Image CRUD</li>
+          <li>Real-time Storefront Sync</li>
+        </ul>
+      </div>
+    </aside>
+
+    <!-- Right Form Card -->
+    <section class="auth-form-panel">
+      <div class="form-box">
+        <div class="form-header">
+          <h2>Welcome back</h2>
+          <p>Sign in to your PulseMart account</p>
+        </div>
+
+        <div *ngIf="error()" class="alert alert-error">{{ error() }}</div>
+
+        <form (ngSubmit)="onSubmit()" class="form-stack">
+          <div class="field">
+            <label for="login-email">Email Address</label>
+            <input
+              id="login-email"
+              type="email"
+              [(ngModel)]="email"
+              name="email"
+              placeholder="admin@pulsemart.com"
+              required
+            />
+          </div>
+
+          <div class="field">
+            <label for="login-password">Password</label>
+            <input
+              id="login-password"
+              type="password"
+              [(ngModel)]="password"
+              name="password"
+              placeholder="Enter your password"
+              required
+            />
+          </div>
+
+          <button type="submit" class="btn-submit" [disabled]="loading()">
+            {{ loading() ? 'Signing in...' : 'Sign In' }}
+          </button>
+        </form>
+
+        <p class="switch-text">
+          Don't have an account? <a routerLink="/register">Create an account</a>
+        </p>
+      </div>
+    </section>
+  </div>
+</div>
