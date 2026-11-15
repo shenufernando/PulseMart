@@ -31,17 +31,25 @@
         <div *ngIf="error()" class="alert alert-error">{{ error() }}</div>
         <div *ngIf="success()" class="alert alert-success">{{ success() }}</div>
 
-        <form (ngSubmit)="onSubmit()" class="form-stack">
+        <form (ngSubmit)="onSubmit()" class="form-stack" novalidate>
           <div class="field">
             <label for="reg-name">Full Name</label>
             <input
               id="reg-name"
               type="text"
               [(ngModel)]="fullName"
+              (ngModelChange)="clearFieldError('fullName')"
               name="fullName"
               placeholder="Shenal Perera"
               required
             />
+            <small
+              *ngIf="fullNameError()"
+              class="field-error"
+              style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;"
+            >
+              {{ fullNameError() }}
+            </small>
           </div>
 
           <div class="field">
@@ -50,22 +58,49 @@
               id="reg-email"
               type="email"
               [(ngModel)]="email"
+              (ngModelChange)="clearFieldError('email')"
               name="email"
               placeholder="you@example.com"
               required
             />
+            <small
+              *ngIf="emailError()"
+              class="field-error"
+              style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;"
+            >
+              {{ emailError() }}
+            </small>
           </div>
 
           <div class="field">
             <label for="reg-password">Password</label>
-            <input
-              id="reg-password"
-              type="password"
-              [(ngModel)]="password"
-              name="password"
-              placeholder="Minimum 6 characters"
-              required
-            />
+            <div class="password-wrapper" style="position: relative; display: flex; align-items: center;">
+              <input
+                id="reg-password"
+                [type]="showPassword() ? 'text' : 'password'"
+                [(ngModel)]="password"
+                (ngModelChange)="clearFieldError('password')"
+                name="password"
+                placeholder="Minimum 6 characters"
+                style="width: 100%; padding-right: 64px;"
+                required
+              />
+              <button
+                type="button"
+                (click)="togglePasswordVisibility()"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                style="position: absolute; right: 10px; background: transparent; border: none; color: #2563eb; font-size: 12px; font-weight: 600; cursor: pointer;"
+              >
+                {{ showPassword() ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+            <small
+              *ngIf="passwordError()"
+              class="field-error"
+              style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;"
+            >
+              {{ passwordError() }}
+            </small>
           </div>
 
           <button type="submit" class="btn-submit" [disabled]="loading()">

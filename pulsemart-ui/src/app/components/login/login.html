@@ -30,29 +30,48 @@
 
         <div *ngIf="error()" class="alert alert-error">{{ error() }}</div>
 
-        <form (ngSubmit)="onSubmit()" class="form-stack">
+        <form (ngSubmit)="onSubmit()" class="form-stack" novalidate>
           <div class="field">
             <label for="login-email">Email Address</label>
             <input
               id="login-email"
               type="email"
               [(ngModel)]="email"
+              (ngModelChange)="clearFieldError('email')"
               name="email"
               placeholder="admin@pulsemart.com"
               required
             />
+            <small *ngIf="emailError()" class="field-error" style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;">
+              {{ emailError() }}
+            </small>
           </div>
 
           <div class="field">
             <label for="login-password">Password</label>
-            <input
-              id="login-password"
-              type="password"
-              [(ngModel)]="password"
-              name="password"
-              placeholder="Enter your password"
-              required
-            />
+            <div class="password-wrapper" style="position: relative; display: flex; align-items: center;">
+              <input
+                id="login-password"
+                [type]="showPassword() ? 'text' : 'password'"
+                [(ngModel)]="password"
+                (ngModelChange)="clearFieldError('password')"
+                name="password"
+                placeholder="Enter your password"
+                style="width: 100%; padding-right: 64px;"
+                required
+              />
+              <button
+                type="button"
+                (click)="togglePasswordVisibility()"
+                [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'"
+                style="position: absolute; right: 10px; background: transparent; border: none; color: #2563eb; font-size: 12px; font-weight: 600; cursor: pointer;"
+              >
+                {{ showPassword() ? 'Hide' : 'Show' }}
+              </button>
+            </div>
+            <small *ngIf="passwordError()" class="field-error" style="color: #dc2626; font-size: 12px; margin-top: 4px; display: block;">
+              {{ passwordError() }}
+            </small>
           </div>
 
           <button type="submit" class="btn-submit" [disabled]="loading()">
