@@ -1,55 +1,81 @@
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-3">
-  <div class="container">
-    <!-- Brand Logo -->
-    <a class="navbar-brand fw-bold fs-4 tracking-wide text-white" style="cursor: pointer;" (click)="navigateToSection('home')">
-      <span class="text-primary">Pulse</span>Mart
-    </a>
+@if (!isAdminRoute()) {
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm py-3">
+    <div class="container">
+      <!-- Brand Logo -->
+      <a class="navbar-brand fw-bold fs-4 tracking-wide text-white" style="cursor: pointer;" (click)="navigateToSection('home')">
+        <span class="text-primary">Pulse</span>Mart
+      </a>
 
-    <!-- Mobile Toggle Button -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
-      <span class="navbar-toggler-icon"></span>
-    </button>
+      @if (isUserDashboardRoute()) {
+        <!-- User Dashboard Right Side: Cart Icon + Sign Out -->
+        <div class="d-flex align-items-center gap-3 ms-auto">
+          <button
+            type="button"
+            class="btn btn-outline-light position-relative rounded-pill px-3 d-inline-flex align-items-center gap-2"
+            (click)="openCartDrawer()"
+            aria-label="Open Cart"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M0 1.5A.5.5 0 0 1 .5 1H2a.5.5 0 0 1 .485.379L2.89 3H14.5a.5.5 0 0 1 .491.592l-1.5 8A.5.5 0 0 1 13 12H4a.5.5 0 0 1-.491-.408L2.01 3.607 1.61 2H.5a.5.5 0 0 1-.5-.5M5 12a2 2 0 1 0 0 4 2 2 0 0 0 0-4m7 0a2 2 0 1 0 0 4 2 2 0 0 0 0-4m-7 1a1 1 0 1 1 0 2 1 1 0 0 1 0-2m7 0a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+            </svg>
+            <span>Cart</span>
+            <span class="badge rounded-pill bg-primary">{{ cartCount() }}</span>
+          </button>
 
-    <!-- Navbar Links -->
-    <div class="collapse navbar-collapse" id="navbarContent">
-      <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-3">
-        <li class="nav-item">
-          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
-             [class.active-highlight]="activeSection === 'home'" 
-             (click)="navigateToSection('home')">Home</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
-             [class.active-highlight]="activeSection === 'featured-products'" 
-             (click)="navigateToSection('featured-products')">Shop</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
-             [class.active-highlight]="activeSection === 'categories'" 
-             (click)="navigateToSection('categories')">Categories</a>
-        </li>
-        <li class="nav-item">
-          <a class="nav-link fw-medium text-white" style="cursor: pointer;" 
-             [class.active-highlight]="activeSection === 'about'" 
-             (click)="navigateToSection('about')">About</a>
-        </li>
-      </ul>
+          <button type="button" class="btn btn-danger px-4 rounded-pill fw-semibold" (click)="logout()">
+            Sign Out
+          </button>
+        </div>
+      } @else {
+        <!-- Mobile Toggle Button -->
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
+          <span class="navbar-toggler-icon"></span>
+        </button>
 
-      <!-- Right Auth Buttons -->
-      <div class="d-flex gap-2">
-        <a class="btn btn-outline-light px-4 rounded-pill" routerLink="/login" (click)="activeSection = ''">Login</a>
-        <a class="btn btn-primary px-4 rounded-pill fw-semibold" routerLink="/register" (click)="activeSection = ''">Register</a>
-      </div>
+        <!-- Navbar Links -->
+        <div class="collapse navbar-collapse" id="navbarContent">
+          <ul class="navbar-nav mx-auto mb-2 mb-lg-0 gap-3">
+            <li class="nav-item">
+              <a class="nav-link fw-medium text-white" style="cursor: pointer;"
+                 [class.active-highlight]="activeSection === 'home'"
+                 (click)="navigateToSection('home')">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link fw-medium text-white" style="cursor: pointer;"
+                 [class.active-highlight]="activeSection === 'featured-products'"
+                 (click)="navigateToSection('featured-products')">Shop</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link fw-medium text-white" style="cursor: pointer;"
+                 [class.active-highlight]="activeSection === 'categories'"
+                 (click)="navigateToSection('categories')">Categories</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link fw-medium text-white" style="cursor: pointer;"
+                 [class.active-highlight]="activeSection === 'about'"
+                 (click)="navigateToSection('about')">About</a>
+            </li>
+          </ul>
+
+          <!-- Right Auth Buttons -->
+          <div class="d-flex gap-2">
+            <a class="btn btn-outline-light px-4 rounded-pill" routerLink="/login" (click)="activeSection = ''">Login</a>
+            <a class="btn btn-primary px-4 rounded-pill fw-semibold" routerLink="/register" (click)="activeSection = ''">Register</a>
+          </div>
+        </div>
+      }
     </div>
-  </div>
-</nav>
+  </nav>
+}
 
 <!-- Page Content Outlet -->
 <router-outlet></router-outlet>
 
-<!-- Footer -->
-<footer class="bg-dark text-light py-4 mt-5">
-  <div class="container text-center">
-    <p class="mb-0 text-secondary">&copy; 2026 PulseMart E-Commerce. All rights reserved.</p>
-  </div>
-</footer>
+@if (!isAdminRoute()) {
+  <!-- Footer -->
+  <footer class="bg-dark text-light py-4 mt-5">
+    <div class="container text-center">
+      <p class="mb-0 text-secondary">&copy; 2026 PulseMart E-Commerce. All rights reserved.</p>
+    </div>
+  </footer>
+}

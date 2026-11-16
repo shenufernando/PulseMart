@@ -4,8 +4,11 @@
       <h1>PulseMart Storefront</h1>
       <p>Live items published from Admin Dashboard</p>
     </div>
-    <button type="button" class="btn-outline" (click)="logout()">Sign Out</button>
   </header>
+
+  @if (cartToast()) {
+    <div class="alert success">{{ cartToast() }}</div>
+  }
 
   <section class="filter-bar">
     <input
@@ -52,6 +55,9 @@
               <div class="no-image">{{ product.name.slice(0, 2).toUpperCase() }}</div>
             }
             <span class="badge">{{ product.category }}</span>
+            @if (product.stock === 0) {
+              <span class="out-badge">Out of stock</span>
+            }
           </div>
 
           <div class="card-body">
@@ -59,10 +65,29 @@
             <p class="desc">{{ product.description }}</p>
 
             <div class="card-footer">
-              <strong class="price">${{ product.price | number:'1.2-2' }}</strong>
+              <strong class="price">Rs. {{ product.price | number:'1.2-2' }}</strong>
               <span class="stock" [class.out]="product.stock === 0">
                 {{ product.stock > 0 ? product.stock + ' in stock' : 'Out of stock' }}
               </span>
+            </div>
+
+            <div class="card-actions" (click)="$event.stopPropagation()">
+              <button
+                type="button"
+                class="btn-cart"
+                [disabled]="product.stock === 0"
+                (click)="addToCart(product, $event)"
+              >
+                Add to Cart
+              </button>
+              <button
+                type="button"
+                class="btn-primary"
+                [disabled]="product.stock === 0"
+                (click)="openBuyNow(product, $event)"
+              >
+                Buy Now
+              </button>
             </div>
           </div>
         </article>
@@ -70,23 +95,286 @@
     </section>
   }
 
+  <!-- Quick View Modal -->
   @if (activeProduct(); as product) {
     <div class="modal-backdrop" (click)="closeProduct()">
       <div class="modal-card" (click)="$event.stopPropagation()">
-        @if (product.imageUrl) {
-          <img [src]="product.imageUrl" [alt]="product.name" class="modal-image" />
-        }
         <div class="modal-body">
+          @if (product.imageUrl) {
+            <img [src]="product.imageUrl" [alt]="product.name" class="modal-image" />
+          }
           <span class="badge inline">{{ product.category }}</span>
+          @if (product.stock === 0) {
+            <span class="out-badge inline">Out of stock</span>
+          }
           <h2>{{ product.name }}</h2>
           <p class="modal-desc">{{ product.description }}</p>
           <div class="card-footer">
-            <strong class="price">${{ product.price | number:'1.2-2' }}</strong>
-            <span>{{ product.stock }} available</span>
+            <strong class="price">Rs. {{ product.price | number:'1.2-2' }}</strong>
+            <span>{{ product.stock > 0 ? product.stock + ' available' : 'Out of stock' }}</span>
           </div>
-          <button type="button" class="btn-primary full" (click)="closeProduct()">
-            Close
+
+          <div class="card-actions">
+            <button
+              type="button"
+              class="btn-cart"
+              [disabled]="product.stock === 0"
+              (click)="addToCart(product); closeProduct()"
+            >
+              Add to Cart
+            </button>
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="product.stock === 0"
+              (click)="openBuyNow(product); closeProduct()"
+            >
+              Buy Now
+            </button>
+          </div>
+
+          <button type="button" class="btn-cancel full" (click)="closeProduct()">
+            Cancel
           </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Cart Drawer Modal -->
+  @if (cartOpen()) {
+    <div class="modal-backdrop" (click)="closeCartDrawer()">
+      <div class="modal-card checkout-modal" (click)="$event.stopPropagation()">
+        <div class="modal-body">
+          <div class="modal-top-row">
+            <h2>Your Cart ({{ cartItems().length }})</h2>
+            <button type="button" class="btn-cancel sm" (click)="closeCartDrawer()">Close</button>
+          </div>
+
+          @if (cartItems().length === 0) {
+            <p class="muted">Your cart is empty. Click "Add to Cart" on any product.</p>
+          } @else {
+            <div class="cart-list">
+              @for (item of cartItems(); track item.product.id; let i = $index) {
+                <div class="cart-item-row">
+                  @if (item.product.imageUrl) {
+                    <img [src]="item.product.imageUrl" [alt]="item.product.name" class="summary-thumb" />
+                  }
+                  <div class="cart-item-info">
+                    <strong>{{ item.product.name }}</strong>
+                    <p class="muted">Rs. {{ item.product.price | number:'1.2-2' }} · Option: {{ item.selectedOption }}</p>
+                    <div class="qty-controls">
+                      <button type="button" class="qty-btn" (click)="updateCartItemQty(i, -1)">-</button>
+                      <span>{{ item.quantity }}</span>
+                      <button type="button" class="qty-btn" (click)="updateCartItemQty(i, 1)">+</button>
+                      <button type="button" class="btn-cancel sm" (click)="removeCartItem(i)">Remove</button>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="card-actions">
+              <button type="button" class="btn-cancel" (click)="closeCartDrawer()">Cancel</button>
+              <button type="button" class="btn-primary" (click)="openCartCheckout()">
+                Checkout Cart
+              </button>
+            </div>
+          }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Buy Now / Cart Checkout Modal (Scrollable) -->
+  @if (checkoutMode()) {
+    <div class="modal-backdrop" (click)="closeCheckoutModal()">
+      <div class="modal-card checkout-modal" (click)="$event.stopPropagation()">
+        <div class="modal-body">
+          @if (orderReceipt(); as receipt) {
+            <!-- Order Successful Screen -->
+            <div class="order-success-box">
+              <span class="success-pill">Order Successful</span>
+              <h2>Thank you for your order!</h2>
+              <p class="muted">Order ID: <strong>{{ receipt.orderId }}</strong></p>
+
+              <div class="price-breakdown">
+                <div class="price-row">
+                  <span>Items</span>
+                  <strong>{{ receipt.itemsSummary }}</strong>
+                </div>
+                <div class="price-row">
+                  <span>Option</span>
+                  <strong>{{ receipt.selectedOption }}</strong>
+                </div>
+                <div class="price-row">
+                  <span>Delivery Fee</span>
+                  <strong>{{ receipt.deliveryFee === 0 ? 'Free' : 'Rs. ' + receipt.deliveryFee }}</strong>
+                </div>
+                <div class="price-row">
+                  <span>Payment Method</span>
+                  <strong>{{ receipt.paymentMethod }}</strong>
+                </div>
+                <div class="price-row">
+                  <span>Phone</span>
+                  <strong>{{ receipt.phoneNumber }}</strong>
+                </div>
+                <div class="price-row">
+                  <span>Address</span>
+                  <strong>{{ receipt.deliveryAddress }}</strong>
+                </div>
+                <div class="price-row total">
+                  <span>Total Paid</span>
+                  <strong>Rs. {{ receipt.totalPayable | number:'1.2-2' }}</strong>
+                </div>
+              </div>
+
+              <button type="button" class="btn-primary full" (click)="closeCheckoutModal()">
+                Continue Shopping
+              </button>
+            </div>
+          } @else {
+            <h2>{{ checkoutMode() === 'buy-now' ? 'Buy Now Checkout' : 'Cart Checkout' }}</h2>
+
+            @if (orderError()) {
+              <div class="alert error">{{ orderError() }}</div>
+            }
+
+            <!-- 1. Item Summary -->
+            @if (checkoutMode() === 'buy-now' && buyNowProduct(); as product) {
+              <div class="checkout-summary">
+                @if (product.imageUrl) {
+                  <img [src]="product.imageUrl" [alt]="product.name" class="summary-thumb" />
+                }
+                <div>
+                  <strong>{{ product.name }}</strong>
+                  <p class="muted">{{ product.category }} · {{ product.stock }} available</p>
+                  <span class="price">Unit Price: Rs. {{ product.price | number:'1.2-2' }}</span>
+                </div>
+              </div>
+            } @else {
+              <div class="checkout-summary">
+                <div>
+                  <strong>Cart Items ({{ cartItems().length }})</strong>
+                  <p class="muted">
+                    @for (item of cartItems(); track item.product.id) {
+                      <span>{{ item.product.name }} (×{{ item.quantity }}) </span>
+                    }
+                  </p>
+                </div>
+              </div>
+            }
+
+            <!-- 2. Delivery & Option Details -->
+            <div class="form-group">
+              <label>Dress / Size / Option</label>
+              <select [(ngModel)]="selectedOption">
+                @for (opt of optionChoices; track opt) {
+                  <option [value]="opt">{{ opt }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="form-row">
+              @if (checkoutMode() === 'buy-now' && buyNowProduct(); as product) {
+                <div class="form-group">
+                  <label>Quantity (Max {{ product.stock }})</label>
+                  <input
+                    type="number"
+                    min="1"
+                    [max]="product.stock"
+                    [(ngModel)]="quantity"
+                    (ngModelChange)="onQuantityChange()"
+                  />
+                </div>
+              }
+
+              <div class="form-group" [class.field-error]="hasInvalidField('phone')">
+                <label>Phone Number</label>
+                <input
+                  type="tel"
+                  [(ngModel)]="phoneNumber"
+                  placeholder="07XXXXXXXX"
+                />
+              </div>
+            </div>
+
+            <div class="form-group" [class.field-error]="hasInvalidField('address')">
+              <label>Delivery Address</label>
+              <textarea
+                rows="2"
+                [(ngModel)]="deliveryAddress"
+                placeholder="Enter full delivery address..."
+              ></textarea>
+            </div>
+
+            <!-- 3. Payment Method (Cash / Card) -->
+            <div class="form-group">
+              <label>Payment Method</label>
+              <div class="payment-options">
+                <label class="radio-pill" [class.active]="paymentMethod === 'Cash'">
+                  <input type="radio" name="payMethod" value="Cash" [(ngModel)]="paymentMethod" />
+                  <span>Cash (Cash on Delivery)</span>
+                </label>
+                <label class="radio-pill" [class.active]="paymentMethod === 'Card'">
+                  <input type="radio" name="payMethod" value="Card" [(ngModel)]="paymentMethod" />
+                  <span>Card</span>
+                </label>
+              </div>
+            </div>
+
+            @if (paymentMethod === 'Card') {
+              <div class="card-fields-box">
+                <div class="form-group" [class.field-error]="hasInvalidField('cardHolder')">
+                  <label>Cardholder Name</label>
+                  <input type="text" [(ngModel)]="cardHolderName" placeholder="Full name on card" />
+                </div>
+                <div class="form-group" [class.field-error]="hasInvalidField('cardNumber')">
+                  <label>Card Number (16 digits)</label>
+                  <input type="text" maxlength="19" [(ngModel)]="cardNumber" placeholder="1234 5678 1234 5678" />
+                </div>
+                <div class="form-row">
+                  <div class="form-group" [class.field-error]="hasInvalidField('cardExpiry')">
+                    <label>Expiry (MM/YY)</label>
+                    <input type="text" maxlength="5" [(ngModel)]="cardExpiry" placeholder="08/29" />
+                  </div>
+                  <div class="form-group" [class.field-error]="hasInvalidField('cardCvv')">
+                    <label>CVV</label>
+                    <input type="password" maxlength="4" [(ngModel)]="cardCvv" placeholder="123" />
+                  </div>
+                </div>
+              </div>
+            }
+
+            <!-- 4. Live Price Breakdown -->
+            <div class="price-breakdown">
+              <div class="price-row">
+                <span>Subtotal</span>
+                <strong>Rs. {{ subtotal() | number:'1.2-2' }}</strong>
+              </div>
+              <div class="price-row">
+                <span>Delivery Fee</span>
+                <strong>
+                  @if (deliveryFee() === 0) {
+                    Free (Over Rs. 10,000)
+                  } @else {
+                    Rs. 450
+                  }
+                </strong>
+              </div>
+              <div class="price-row total">
+                <span>Total Payable</span>
+                <strong>Rs. {{ totalPayable() | number:'1.2-2' }}</strong>
+              </div>
+            </div>
+
+            <div class="card-actions">
+              <button type="button" class="btn-cancel" (click)="closeCheckoutModal()">Cancel</button>
+              <button type="button" class="btn-primary" (click)="confirmOrder()">
+                {{ paymentMethod === 'Cash' ? 'Confirm Order' : 'Pay & Confirm Order' }}
+              </button>
+            </div>
+          }
         </div>
       </div>
     </div>
