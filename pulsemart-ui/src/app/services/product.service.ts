@@ -1,22 +1,17 @@
 import { Injectable, inject, signal } from '@angular/core';
 import { HttpClient, HttpHeaders, HttpParams } from '@angular/common/http';
 import { Observable, tap } from 'rxjs';
+import { Product } from '../models/product.model';
+import { AuthService } from './auth.service';
 
-export interface Product {
-  id: number;
-  name: string;
-  description: string;
-  price: number;
-  stock: number;
-  category: string;
-  imageUrl: string;
-}
+export type { Product };
 
 @Injectable({
   providedIn: 'root',
 })
 export class ProductService {
   private readonly http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
   private readonly apiBase = 'http://localhost:5206';
   private readonly apiUrl = `${this.apiBase}/api/Products`;
 
@@ -56,6 +51,24 @@ export class ProductService {
       );
   }
 
+  updateProduct(id: number, formData: FormData): Observable<Product> {
+    return this.http
+      .put<Product>(`${this.apiUrl}/${id}`, formData, {
+        headers: this.getAuthHeaders(),
+      })
+      .pipe(
+        tap((updated) => {
+          const normalized: Product = {
+            ...updated,
+            imageUrl: this.resolveImageUrl(updated.imageUrl),
+          };
+          this.products.update((list) =>
+            list.map((p) => (p.id === id ? normalized : p))
+          );
+        })
+      );
+  }
+
   deleteProduct(id: number): Observable<unknown> {
     return this.http
       .delete(`${this.apiUrl}/${id}`, { headers: this.getAuthHeaders() })
@@ -76,6 +89,8 @@ export class ProductService {
 
   private getAuthHeaders(): HttpHeaders {
     const token =
+      this.authService.getToken() ||
+      localStorage.getItem('pulsemart_token') ||
       localStorage.getItem('token') ||
       localStorage.getItem('access_token') ||
       localStorage.getItem('jwt') ||

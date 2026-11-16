@@ -36,7 +36,7 @@
       </div>
       <div class="kpi-card">
         <span class="kpi-label">Catalog Value</span>
-        <strong class="kpi-value">\${{ totalValue() | number:'1.2-2' }}</strong>
+        <strong class="kpi-value">${{ totalValue() | number:'1.2-2' }}</strong>
       </div>
       <div class="kpi-card">
         <span class="kpi-label">Low Stock (&lt; 10)</span>
@@ -45,7 +45,7 @@
     </section>
 
     <section class="card">
-      <h2>Create New Item Post</h2>
+      <h2>{{ editingId() ? 'Edit Item Post' : 'Create New Item Post' }}</h2>
 
       @if (successMessage()) {
         <div class="alert success">{{ successMessage() }}</div>
@@ -135,9 +135,21 @@
           }
         </div>
 
-        <button type="submit" class="btn-primary" [disabled]="submitting()">
-          {{ submitting() ? 'Publishing...' : 'Publish Item' }}
-        </button>
+        <div class="form-actions" style="display: flex; gap: 10px;">
+          <button type="submit" class="btn-primary" [disabled]="submitting()">
+            {{
+              submitting()
+                ? (editingId() ? 'Updating...' : 'Publishing...')
+                : (editingId() ? 'Update Item' : 'Publish Item')
+            }}
+          </button>
+
+          @if (editingId()) {
+            <button type="button" class="btn-secondary" (click)="cancelEdit()" [disabled]="submitting()">
+              Cancel
+            </button>
+          }
+        </div>
       </form>
     </section>
 
@@ -174,14 +186,19 @@
                     <p class="sub-desc">{{ item.description }}</p>
                   </td>
                   <td><span class="tag">{{ item.category }}</span></td>
-                  <td>\${{ item.price | number:'1.2-2' }}</td>
+                  <td>${{ item.price | number:'1.2-2' }}</td>
                   <td>
                     <span [class.low-stock]="item.stock < 10">{{ item.stock }} in stock</span>
                   </td>
                   <td>
-                    <button type="button" class="btn-danger" (click)="deleteItem(item.id)">
-                      Delete
-                    </button>
+                    <div style="display: flex; gap: 8px;">
+                      <button type="button" class="btn-edit" (click)="editItem(item)">
+                        Edit
+                      </button>
+                      <button type="button" class="btn-danger" (click)="deleteItem(item.id)">
+                        Delete
+                      </button>
+                    </div>
                   </td>
                 </tr>
               }

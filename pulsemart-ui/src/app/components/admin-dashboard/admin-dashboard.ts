@@ -2,7 +2,8 @@ import { Component, OnInit, computed, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
-import { ProductService } from '../../services/product.service';
+import { Product, ProductService } from '../../services/product.service';
+import { AuthService } from '../../services/auth.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -13,6 +14,7 @@ import { ProductService } from '../../services/product.service';
 })
 export class AdminDashboard implements OnInit {
   private readonly productService = inject(ProductService);
+  private readonly authService = inject(AuthService);
   private readonly router = inject(Router);
 
   readonly categories = ['Electronics', 'Fashion', 'Home & Living', 'Accessories', 'General'];
@@ -25,6 +27,7 @@ export class AdminDashboard implements OnInit {
   description = '';
   selectedFile: File | null = null;
 
+  readonly editingId = signal<number | null>(null);
   readonly previewUrl = signal<string | null>(null);
   readonly submitting = signal(false);
   readonly successMessage = signal('');
@@ -73,12 +76,39 @@ export class AdminDashboard implements OnInit {
     reader.readAsDataURL(file);
   }
 
+  editItem(item: Product): void {
+    this.editingId.set(item.id);
+    this.name = item.name;
+    this.category = item.category;
+    this.price = item.price;
+    this.stock = item.stock;
+    this.description = item.description;
+    this.selectedFile = null;
+    this.previewUrl.set(item.imageUrl || null);
+    this.successMessage.set('');
+    this.errorMessage.set('');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  cancelEdit(): void {
+    this.editingId.set(null);
+    this.resetForm();
+    this.errorMessage.set('');
+  }
+
   publishItem(): void {
     this.successMessage.set('');
     this.errorMessage.set('');
 
     if (!this.name.trim() || this.price === null || this.price <= 0 || this.stock === null || this.stock < 0) {
       this.errorMessage.set('Please enter a valid item name, price, and stock quantity.');
+      return;
+    }
+
+    const token = this.authService.getToken() || localStorage.getItem('pulsemart_token');
+    if (!token) {
+      this.errorMessage.set('Session expired or not logged in. Please sign in again.');
+      this.router.navigate(['/login']);
       return;
     }
 
@@ -93,22 +123,44 @@ export class AdminDashboard implements OnInit {
       formData.append('image', this.selectedFile);
     }
 
+    const currentEditId = this.editingId();
     this.submitting.set(true);
-    this.productService.createProduct(formData).subscribe({
+
+    const request$ = currentEditId
+      ? this.productService.updateProduct(currentEditId, formData)
+      : this.productService.createProduct(formData);
+
+    request$.subscribe({
       next: () => {
         this.submitting.set(false);
-        this.successMessage.set('Item post published! Visible on User Dashboard now.');
+        this.editingId.set(null);
+        this.successMessage.set(
+          currentEditId
+            ? 'Item post updated! Changes are live now.'
+            : 'Item post published! Visible on User Dashboard now.'
+        );
         this.resetForm();
       },
       error: (err) => {
         this.submitting.set(false);
-        this.errorMessage.set(err?.error?.message || 'Failed to publish item post.');
+        if (err?.status === 401) {
+          this.errorMessage.set('Unauthorized (401): Please log in again and try publishing.');
+          return;
+        }
+        this.errorMessage.set(
+          err?.error?.message ||
+            (currentEditId ? 'Failed to update item post.' : 'Failed to publish item post.')
+        );
       },
     });
   }
 
   deleteItem(id: number): void {
     this.errorMessage.set('');
+    if (this.editingId() === id) {
+      this.cancelEdit();
+    }
+
     this.productService.deleteProduct(id).subscribe({
       next: () => {
         this.successMessage.set('Item post deleted.');
@@ -124,7 +176,7 @@ export class AdminDashboard implements OnInit {
   }
 
   logout(): void {
-    localStorage.clear();
+    this.authService.logout();
     this.router.navigate(['/login']);
   }
 
