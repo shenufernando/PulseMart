@@ -9,6 +9,9 @@ namespace PulseMart.API.Data
 
         public DbSet<User> Users { get; set; }
         public DbSet<Product> Products { get; set; }
+        public DbSet<Order> Orders { get; set; }
+        public DbSet<OrderItem> OrderItems { get; set; }
+        public DbSet<ProductReview> ProductReviews { get; set; }
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -17,6 +20,19 @@ namespace PulseMart.API.Data
             // Configure decimal precision for Product Price
             modelBuilder.Entity<Product>()
                 .Property(p => p.Price)
+                .HasColumnType("decimal(18,2)");
+
+            // Configure decimal precision for Order & OrderItem amounts
+            modelBuilder.Entity<Order>()
+                .Property(o => o.DeliveryFee)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<Order>()
+                .Property(o => o.TotalPayable)
+                .HasColumnType("decimal(18,2)");
+
+            modelBuilder.Entity<OrderItem>()
+                .Property(oi => oi.UnitPrice)
                 .HasColumnType("decimal(18,2)");
 
             // Seed default Admin account into the database

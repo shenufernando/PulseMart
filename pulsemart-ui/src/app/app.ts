@@ -12,18 +12,25 @@ export class App implements OnInit, OnDestroy {
 
   activeSection: string = 'home';
   readonly cartCount = signal(0);
+  readonly orderCount = signal(0);
 
   private readonly handleCartEvent = () => this.syncCartCount();
+  private readonly handleOrdersEvent = () => this.syncOrderCount();
 
   ngOnInit(): void {
     this.syncCartCount();
+    this.syncOrderCount();
     window.addEventListener('pulsemart-cart-updated', this.handleCartEvent);
-    window.addEventListener('storage', this.handleCartEvent);
+    window.addEventListener('pulsemart-orders-updated', this.handleOrdersEvent);
+    window.addEventListener('storage', () => {
+      this.syncCartCount();
+      this.syncOrderCount();
+    });
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('pulsemart-cart-updated', this.handleCartEvent);
-    window.removeEventListener('storage', this.handleCartEvent);
+    window.removeEventListener('pulsemart-orders-updated', this.handleOrdersEvent);
   }
 
   syncCartCount(): void {
@@ -37,6 +44,19 @@ export class App implements OnInit, OnDestroy {
     } catch {
       this.cartCount.set(0);
     }
+  }
+
+  syncOrderCount(): void {
+    try {
+      const count = Number(localStorage.getItem('pulsemart_order_count') || 0);
+      this.orderCount.set(count);
+    } catch {
+      this.orderCount.set(0);
+    }
+  }
+
+  openMyOrders(): void {
+    window.dispatchEvent(new CustomEvent('pulsemart-open-orders'));
   }
 
   openCartDrawer(): void {
@@ -54,6 +74,7 @@ export class App implements OnInit, OnDestroy {
   logout(): void {
     localStorage.clear();
     this.cartCount.set(0);
+    this.orderCount.set(0);
     this.activeSection = 'home';
     this.router.navigate(['/login']);
   }

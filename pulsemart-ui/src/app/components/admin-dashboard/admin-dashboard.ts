@@ -4,6 +4,11 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Product, ProductService } from '../../services/product.service';
 import { AuthService } from '../../services/auth.service';
+import {
+  AppUser,
+  OrderRecord,
+  PulseMartStoreService,
+} from '../../services/pulsemart-store.service';
 
 @Component({
   selector: 'app-admin-dashboard',
@@ -15,11 +20,21 @@ import { AuthService } from '../../services/auth.service';
 export class AdminDashboard implements OnInit {
   private readonly productService = inject(ProductService);
   private readonly authService = inject(AuthService);
+  private readonly store = inject(PulseMartStoreService);
   private readonly router = inject(Router);
 
   readonly categories = ['Electronics', 'Fashion', 'Home & Living', 'Accessories', 'General'];
   readonly products = this.productService.products;
 
+  // Shared Store Signals (Inventory, Orders, Users, Reviews)
+  readonly activeSection = signal<'inventory' | 'orders' | 'users' | 'reviews'>('inventory');
+  readonly orders = this.store.orders;
+  readonly users = this.store.users;
+  readonly reviews = this.store.reviews;
+  readonly deletedOrdersCount = this.store.deletedOrdersCount;
+  readonly editingUser = signal<AppUser | null>(null);
+
+  // Item Post Form fields
   name = '';
   category = 'Electronics';
   price: number | null = null;
@@ -33,6 +48,7 @@ export class AdminDashboard implements OnInit {
   readonly successMessage = signal('');
   readonly errorMessage = signal('');
 
+  // Inventory KPIs
   readonly totalStock = computed(() =>
     this.products().reduce((sum, item) => sum + Number(item.stock || 0), 0)
   );
@@ -45,16 +61,44 @@ export class AdminDashboard implements OnInit {
     this.products().filter((item) => Number(item.stock || 0) < 10).length
   );
 
+  // Orders & Users KPIs
+  readonly confirmedOrdersCount = computed(() =>
+    this.orders().filter((o) => o.status === 'Confirmed' || o.status === 'Delivered').length
+  );
+
+  readonly totalOrderRevenue = computed(() =>
+    this.orders().reduce((sum, o) => sum + Number(o.totalPayable || 0), 0)
+  );
+
+  readonly adminUsersCount = computed(() =>
+    this.users().filter((u) => u.role === 'Admin').length
+  );
+
+  readonly customerUsersCount = computed(() =>
+    this.users().filter((u) => u.role === 'Customer').length
+  );
+
   ngOnInit(): void {
     this.loadProducts();
+    this.store.fetchBackendOrders();
+    this.store.fetchBackendUsers();
+    this.store.fetchBackendReviews();
   }
 
   loadProducts(): void {
     this.productService.getProducts().subscribe({
+      next: () => {
+        // Keep customer-purchased stock deductions synced on Admin Dashboard too
+        this.store.applyStockOverridesToProducts();
+      },
       error: (err) => {
         this.errorMessage.set(err?.error?.message || 'Failed to load products.');
       },
     });
+  }
+
+  getProductName(productId: number): string {
+    return this.products().find((p) => Number(p.id) === Number(productId))?.name || `Product #${productId}`;
   }
 
   onFileSelected(event: Event): void {
@@ -112,11 +156,12 @@ export class AdminDashboard implements OnInit {
       return;
     }
 
+    const updatedStockValue = Number(this.stock);
     const formData = new FormData();
     formData.append('name', this.name.trim());
     formData.append('category', this.category);
     formData.append('price', String(this.price));
-    formData.append('stock', String(this.stock));
+    formData.append('stock', String(updatedStockValue));
     formData.append('description', this.description.trim());
 
     if (this.selectedFile) {
@@ -132,6 +177,9 @@ export class AdminDashboard implements OnInit {
 
     request$.subscribe({
       next: () => {
+        if (currentEditId !== null) {
+          this.store.syncAdminEditedStock(currentEditId, updatedStockValue);
+        }
         this.submitting.set(false);
         this.editingId.set(null);
         this.successMessage.set(
@@ -169,6 +217,47 @@ export class AdminDashboard implements OnInit {
         this.errorMessage.set(err?.error?.message || 'Failed to delete item.');
       },
     });
+  }
+
+  // =========================================================
+  // ORDERS MANAGEMENT ACTIONS (SQL Server Sync)
+  // =========================================================
+  changeOrderStatus(order: OrderRecord, status: OrderRecord['status']): void {
+    this.store.updateOrderStatus(order.id ?? order.orderCode ?? order.orderId ?? '', status);
+  }
+
+  removeOrder(order: OrderRecord): void {
+    // Deletes the order, increments Deleted Orders counter, and restores item stock
+    this.store.deleteOrder(order.id ?? order.orderCode ?? order.orderId ?? '', true);
+  }
+
+  // =========================================================
+  // USER MANAGEMENT ACTIONS (SQL Server dbo.Users Sync)
+  // =========================================================
+  startEditUser(user: AppUser): void {
+    this.editingUser.set({
+      ...user,
+      role: user.role === 'Admin' ? 'Admin' : 'Customer',
+    });
+  }
+
+  saveEditedUser(): void {
+    const u = this.editingUser();
+    if (!u || !u.name.trim() || !u.email.trim()) return;
+    this.store.updateUser(u);
+    this.editingUser.set(null);
+  }
+
+  removeUser(userId: number | string): void {
+    this.store.deleteUser(userId);
+  }
+
+  // =========================================================
+  // REVIEWS MANAGEMENT ACTIONS (SQL Server dbo.ProductReviews Sync)
+  // =========================================================
+  removeReview(reviewId?: number | string): void {
+    if (!reviewId) return;
+    this.store.deleteReview(reviewId);
   }
 
   goToUserDashboard(): void {

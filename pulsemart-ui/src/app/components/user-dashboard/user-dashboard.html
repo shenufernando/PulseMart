@@ -1,98 +1,209 @@
 <div class="store-shell">
-  <header class="store-header">
-    <div>
-      <h1>PulseMart Storefront</h1>
-      <p>Live items published from Admin Dashboard</p>
-    </div>
-  </header>
-
   @if (cartToast()) {
     <div class="alert success">{{ cartToast() }}</div>
   }
 
-  <section class="filter-bar">
-    <input
-      type="search"
-      [(ngModel)]="search"
-      (ngModelChange)="loadStorefront()"
-      placeholder="Search items by name or details..."
-      aria-label="Search items"
-    />
+  <!-- ===================== MY ORDERS VIEW (OPENED FROM NAVBAR) ===================== -->
+  @if (activeTab() === 'orders') {
+    <section class="orders-hero-wrapper">
+      <div class="orders-hero-overlay">
+        <div class="orders-hero-top">
+          <div>
+            <span class="orders-eyebrow">ORDER HISTORY & LIVE TRACKING</span>
+            <h1>My Orders ({{ orders().length }})</h1>
+            <p>Track your purchases, delivery details, and share product reviews</p>
+          </div>
+          <button type="button" class="btn-back-shop" (click)="activeTab.set('storefront')">
+            ← Back to Shopping
+          </button>
+        </div>
 
-    <div class="category-list" role="tablist" aria-label="Categories">
-      @for (category of categories; track category) {
-        <button
-          type="button"
-          class="cat-pill"
-          [class.active]="selectedCategory === category"
-          (click)="selectCategory(category)"
-        >
-          {{ category }}
-        </button>
-      }
-    </div>
-  </section>
+        @if (orders().length === 0) {
+          <div class="orders-empty-glass">
+            <h3>No orders placed yet</h3>
+            <p>When you purchase an item, your order summary and tracking status will appear here.</p>
+            <button type="button" class="btn-primary" (click)="activeTab.set('storefront')">
+              Back to Shopping
+            </button>
+          </div>
+        } @else {
+          <div class="orders-grid">
+            @for (order of orders(); track order.id || order.orderCode) {
+              <article class="order-glass-card">
+                <div class="order-card-head">
+                  <div class="order-id-group">
+                    <strong class="order-id">{{ order.orderCode || order.orderId }}</strong>
+                    <span class="order-date">{{ order.createdAt | date:'MMM d, y, h:mm a' }}</span>
+                  </div>
+                  <span
+                    class="status-pill"
+                    [class.confirmed]="order.status === 'Confirmed' || order.status === 'Delivered'"
+                    [class.pending]="order.status === 'Pending' || order.status === 'Shipped'"
+                  >
+                    {{ order.status }}
+                  </span>
+                </div>
 
-  @if (errorMessage()) {
-    <div class="alert error">{{ errorMessage() }}</div>
-  }
+                <div class="customer-banner">
+                  <span>Customer:</span>
+                  <strong>{{ order.customerName }}</strong>
+                </div>
 
-  @if (loading()) {
-    <div class="state-box">Loading items...</div>
-  } @else if (products().length === 0) {
-    <div class="state-box">
-      <h3>No items available yet</h3>
-      <p>Items published by Admin will appear here automatically.</p>
-    </div>
-  } @else {
-    <section class="product-grid">
-      @for (product of products(); track product.id) {
-        <article class="product-card" (click)="openProduct(product)">
-          <div class="card-image">
-            @if (product.imageUrl) {
-              <img [src]="product.imageUrl" [alt]="product.name" />
-            } @else {
-              <div class="no-image">{{ product.name.slice(0, 2).toUpperCase() }}</div>
-            }
-            <span class="badge">{{ product.category }}</span>
-            @if (product.stock === 0) {
-              <span class="out-badge">Out of stock</span>
+                <div class="ordered-items-list">
+                  @for (item of order.items; track item.productId) {
+                    <div class="ordered-item-row">
+                      @if (item.imageUrl) {
+                        <img [src]="item.imageUrl" [alt]="item.productName" class="ordered-item-thumb" />
+                      } @else {
+                        <div class="ordered-item-thumb placeholder">
+                          {{ item.productName.slice(0, 2).toUpperCase() }}
+                        </div>
+                      }
+                      <div class="ordered-item-info">
+                        <strong>{{ item.productName }}</strong>
+                        <span>Qty: {{ item.quantity }} · Rs. {{ item.unitPrice | number:'1.2-2' }}</span>
+                      </div>
+                      <button
+                        type="button"
+                        class="btn-review-pill"
+                        (click)="openReviewModal(item, order)"
+                      >
+                        ★ Write Review
+                      </button>
+                    </div>
+                  }
+                </div>
+
+                <div class="order-meta-grid">
+                  <div class="meta-chip">
+                    <span class="meta-label">Option:</span>
+                    <span class="meta-val">{{ order.selectedOption }}</span>
+                  </div>
+                  <div class="meta-chip">
+                    <span class="meta-label">Payment:</span>
+                    <span class="meta-val">{{ order.paymentMethod }}</span>
+                  </div>
+                  <div class="meta-chip">
+                    <span class="meta-label">Phone:</span>
+                    <span class="meta-val">{{ order.phoneNumber }}</span>
+                  </div>
+                  <div class="meta-chip">
+                    <span class="meta-label">Address:</span>
+                    <span class="meta-val">{{ order.deliveryAddress }}</span>
+                  </div>
+                </div>
+
+                <div class="order-card-foot">
+                  <span class="muted">
+                    Delivery: {{ order.deliveryFee === 0 ? 'Free' : 'Rs. ' + order.deliveryFee }}
+                  </span>
+                  <strong class="price">Total: Rs. {{ order.totalPayable | number:'1.2-2' }}</strong>
+                </div>
+              </article>
             }
           </div>
-
-          <div class="card-body">
-            <h2>{{ product.name }}</h2>
-            <p class="desc">{{ product.description }}</p>
-
-            <div class="card-footer">
-              <strong class="price">Rs. {{ product.price | number:'1.2-2' }}</strong>
-              <span class="stock" [class.out]="product.stock === 0">
-                {{ product.stock > 0 ? product.stock + ' in stock' : 'Out of stock' }}
-              </span>
-            </div>
-
-            <div class="card-actions" (click)="$event.stopPropagation()">
-              <button
-                type="button"
-                class="btn-cart"
-                [disabled]="product.stock === 0"
-                (click)="addToCart(product, $event)"
-              >
-                Add to Cart
-              </button>
-              <button
-                type="button"
-                class="btn-primary"
-                [disabled]="product.stock === 0"
-                (click)="openBuyNow(product, $event)"
-              >
-                Buy Now
-              </button>
-            </div>
-          </div>
-        </article>
-      }
+        }
+      </div>
     </section>
+  } @else {
+    <!-- ===================== STOREFRONT VIEW (NO INLINE STOREFRONT/ORDERS BUTTONS) ===================== -->
+    <header class="store-header">
+      <div>
+        <h1>PulseMart Storefront</h1>
+        <p>Live items published from Admin Dashboard</p>
+      </div>
+    </header>
+
+    <section class="filter-bar">
+      <input
+        type="search"
+        [(ngModel)]="search"
+        (ngModelChange)="loadStorefront()"
+        placeholder="Search items by name or details..."
+        aria-label="Search items"
+      />
+
+      <div class="category-list" role="tablist" aria-label="Categories">
+        @for (category of categories; track category) {
+          <button
+            type="button"
+            class="cat-pill"
+            [class.active]="selectedCategory === category"
+            (click)="selectCategory(category)"
+          >
+            {{ category }}
+          </button>
+        }
+      </div>
+    </section>
+
+    @if (errorMessage()) {
+      <div class="alert error">{{ errorMessage() }}</div>
+    }
+
+    @if (loading()) {
+      <div class="state-box">Loading items...</div>
+    } @else if (products().length === 0) {
+      <div class="state-box">
+        <h3>No items available yet</h3>
+        <p>Items published by Admin will appear here automatically.</p>
+      </div>
+    } @else {
+      <section class="product-grid">
+        @for (product of products(); track product.id) {
+          <article class="product-card" (click)="openProduct(product)">
+            <div class="card-image">
+              @if (product.imageUrl) {
+                <img [src]="product.imageUrl" [alt]="product.name" />
+              } @else {
+                <div class="no-image">{{ product.name.slice(0, 2).toUpperCase() }}</div>
+              }
+              <span class="badge">{{ product.category }}</span>
+              @if (product.stock === 0) {
+                <span class="out-badge">Out of stock</span>
+              }
+            </div>
+
+            <div class="card-body">
+              <h2>{{ product.name }}</h2>
+              <p class="desc">{{ product.description }}</p>
+
+              @if (getProductReviews(product.id).length > 0) {
+                <div class="card-review-tag">
+                  ★ {{ getProductReviews(product.id).length }} Customer Review(s)
+                </div>
+              }
+
+              <div class="card-footer">
+                <strong class="price">Rs. {{ product.price | number:'1.2-2' }}</strong>
+                <span class="stock" [class.out]="product.stock === 0">
+                  {{ product.stock > 0 ? product.stock + ' in stock' : 'Out of stock' }}
+                </span>
+              </div>
+
+              <div class="card-actions" (click)="$event.stopPropagation()">
+                <button
+                  type="button"
+                  class="btn-cart"
+                  [disabled]="product.stock === 0"
+                  (click)="addToCart(product, $event)"
+                >
+                  Add to Cart
+                </button>
+                <button
+                  type="button"
+                  class="btn-primary"
+                  [disabled]="product.stock === 0"
+                  (click)="openBuyNow(product, $event)"
+                >
+                  Buy Now
+                </button>
+              </div>
+            </div>
+          </article>
+        }
+      </section>
+    }
   }
 
   <!-- Quick View Modal -->
@@ -112,6 +223,25 @@
           <div class="card-footer">
             <strong class="price">Rs. {{ product.price | number:'1.2-2' }}</strong>
             <span>{{ product.stock > 0 ? product.stock + ' available' : 'Out of stock' }}</span>
+          </div>
+
+          <div class="product-reviews-box">
+            <h4>Customer Reviews ({{ activeProductReviews().length }})</h4>
+            @if (activeProductReviews().length === 0) {
+              <p class="muted">No reviews yet. Purchase this item to leave the first review!</p>
+            } @else {
+              <div class="reviews-scroll">
+                @for (rev of activeProductReviews(); track rev.id) {
+                  <div class="single-review">
+                    <div class="rev-head">
+                      <strong>{{ rev.customerName }}</strong>
+                      <span class="stars">{{ '★'.repeat(rev.rating) }}{{ '☆'.repeat(5 - rev.rating) }}</span>
+                    </div>
+                    <p>{{ rev.comment }}</p>
+                  </div>
+                }
+              </div>
+            }
           </div>
 
           <div class="card-actions">
@@ -134,7 +264,7 @@
           </div>
 
           <button type="button" class="btn-cancel full" (click)="closeProduct()">
-            Cancel
+            Close
           </button>
         </div>
       </div>
@@ -186,22 +316,21 @@
     </div>
   }
 
-  <!-- Buy Now / Cart Checkout Modal (Scrollable) -->
+  <!-- Checkout Modal -->
   @if (checkoutMode()) {
     <div class="modal-backdrop" (click)="closeCheckoutModal()">
       <div class="modal-card checkout-modal" (click)="$event.stopPropagation()">
         <div class="modal-body">
           @if (orderReceipt(); as receipt) {
-            <!-- Order Successful Screen -->
             <div class="order-success-box">
-              <span class="success-pill">Order Successful</span>
-              <h2>Thank you for your order!</h2>
-              <p class="muted">Order ID: <strong>{{ receipt.orderId }}</strong></p>
+              <span class="success-pill">Order Saved to Database</span>
+              <h2>Thank you, {{ receipt.customerName }}!</h2>
+              <p class="muted">Order ID: <strong>{{ receipt.orderCode || receipt.orderId }}</strong> · Status: <strong>{{ receipt.status }}</strong></p>
 
               <div class="price-breakdown">
                 <div class="price-row">
-                  <span>Items</span>
-                  <strong>{{ receipt.itemsSummary }}</strong>
+                  <span>Customer</span>
+                  <strong>{{ receipt.customerName }}</strong>
                 </div>
                 <div class="price-row">
                   <span>Option</span>
@@ -229,9 +358,14 @@
                 </div>
               </div>
 
-              <button type="button" class="btn-primary full" (click)="closeCheckoutModal()">
-                Continue Shopping
-              </button>
+              <div class="card-actions">
+                <button type="button" class="btn-cart" (click)="viewMyOrdersFromReceipt()">
+                  View My Orders
+                </button>
+                <button type="button" class="btn-primary" (click)="closeCheckoutModal()">
+                  Back to Shopping
+                </button>
+              </div>
             </div>
           } @else {
             <h2>{{ checkoutMode() === 'buy-now' ? 'Buy Now Checkout' : 'Cart Checkout' }}</h2>
@@ -240,7 +374,6 @@
               <div class="alert error">{{ orderError() }}</div>
             }
 
-            <!-- 1. Item Summary -->
             @if (checkoutMode() === 'buy-now' && buyNowProduct(); as product) {
               <div class="checkout-summary">
                 @if (product.imageUrl) {
@@ -265,7 +398,15 @@
               </div>
             }
 
-            <!-- 2. Delivery & Option Details -->
+            <div class="form-group" [class.field-error]="hasInvalidField('customerName')">
+              <label>Your Full Name</label>
+              <input
+                type="text"
+                [(ngModel)]="customerName"
+                placeholder="Enter your full name (e.g., Nimal Perera)"
+              />
+            </div>
+
             <div class="form-group">
               <label>Dress / Size / Option</label>
               <select [(ngModel)]="selectedOption">
@@ -283,8 +424,8 @@
                     type="number"
                     min="1"
                     [max]="product.stock"
-                    [(ngModel)]="quantity"
-                    (ngModelChange)="onQuantityChange()"
+                    [ngModel]="quantity()"
+                    (ngModelChange)="onQuantityChange($event)"
                   />
                 </div>
               }
@@ -308,7 +449,6 @@
               ></textarea>
             </div>
 
-            <!-- 3. Payment Method (Cash / Card) -->
             <div class="form-group">
               <label>Payment Method</label>
               <div class="payment-options">
@@ -346,7 +486,6 @@
               </div>
             }
 
-            <!-- 4. Live Price Breakdown -->
             <div class="price-breakdown">
               <div class="price-row">
                 <span>Subtotal</span>
@@ -370,11 +509,55 @@
 
             <div class="card-actions">
               <button type="button" class="btn-cancel" (click)="closeCheckoutModal()">Cancel</button>
-              <button type="button" class="btn-primary" (click)="confirmOrder()">
-                {{ paymentMethod === 'Cash' ? 'Confirm Order' : 'Pay & Confirm Order' }}
+              <button type="button" class="btn-primary" [disabled]="submittingOrder()" (click)="confirmOrder()">
+                {{ submittingOrder() ? 'Saving Order...' : (paymentMethod === 'Cash' ? 'Confirm Order' : 'Pay & Confirm Order') }}
               </button>
             </div>
           }
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Write Review Modal -->
+  @if (reviewTarget(); as target) {
+    <div class="modal-backdrop" (click)="closeReviewModal()">
+      <div class="modal-card checkout-modal" (click)="$event.stopPropagation()">
+        <div class="modal-body">
+          <h2>Rate & Review Product</h2>
+          <p class="muted">Product: <strong>{{ target.productName }}</strong> ({{ target.orderCode }})</p>
+
+          <div class="form-group">
+            <label>Star Rating</label>
+            <select [(ngModel)]="reviewRating">
+              <option [ngValue]="5">★★★★★ (5 - Excellent)</option>
+              <option [ngValue]="4">★★★★☆ (4 - Very Good)</option>
+              <option [ngValue]="3">★★★☆☆ (3 - Good)</option>
+              <option [ngValue]="2">★★☆☆☆ (2 - Fair)</option>
+              <option [ngValue]="1">★☆☆☆☆ (1 - Poor)</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Your Review</label>
+            <textarea
+              rows="3"
+              [(ngModel)]="reviewComment"
+              placeholder="Share your experience with this item..."
+            ></textarea>
+          </div>
+
+          <div class="card-actions">
+            <button type="button" class="btn-cancel" (click)="closeReviewModal()">Cancel</button>
+            <button
+              type="button"
+              class="btn-primary"
+              [disabled]="!reviewComment.trim() || submittingReview()"
+              (click)="submitProductReview()"
+            >
+              {{ submittingReview() ? 'Posting...' : 'Submit Review' }}
+            </button>
+          </div>
         </div>
       </div>
     </div>

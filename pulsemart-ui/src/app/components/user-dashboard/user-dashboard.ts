@@ -3,21 +3,16 @@ import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Product, ProductService } from '../../services/product.service';
+import {
+  OrderItemLine,
+  OrderRecord,
+  ProductReview,
+  PulseMartStoreService,
+} from '../../services/pulsemart-store.service';
 
 export interface CartItem {
   product: Product;
   quantity: number;
-  selectedOption: string;
-}
-
-export interface OrderReceipt {
-  orderId: string;
-  itemsSummary: string;
-  totalPayable: number;
-  deliveryFee: number;
-  paymentMethod: 'Cash' | 'Card';
-  deliveryAddress: string;
-  phoneNumber: string;
   selectedOption: string;
 }
 
@@ -30,14 +25,21 @@ export interface OrderReceipt {
 })
 export class UserDashboard implements OnInit, OnDestroy {
   private readonly productService = inject(ProductService);
+  private readonly store = inject(PulseMartStoreService);
   private readonly router = inject(Router);
 
   readonly categories = ['All', 'Electronics', 'Fashion', 'Home & Living', 'Accessories', 'General'];
   readonly products = this.productService.products;
+  readonly orders = this.store.orders;
+  readonly reviews = this.store.reviews;
+
+  // Navigation tab ('storefront' | 'orders')
+  readonly activeTab = signal<'storefront' | 'orders'>('storefront');
 
   search = '';
   selectedCategory = 'All';
   readonly loading = signal(false);
+  readonly submittingOrder = signal(false);
   readonly errorMessage = signal('');
   readonly activeProduct = signal<Product | null>(null);
 
@@ -49,7 +51,8 @@ export class UserDashboard implements OnInit, OnDestroy {
   // Checkout Modal state ('buy-now' | 'cart')
   readonly checkoutMode = signal<'buy-now' | 'cart' | null>(null);
   readonly buyNowProduct = signal<Product | null>(null);
-  quantity = 1;
+  readonly quantity = signal(1);
+  customerName = '';
   selectedOption = 'Standard';
   deliveryAddress = '';
   phoneNumber = '';
@@ -63,19 +66,40 @@ export class UserDashboard implements OnInit, OnDestroy {
 
   readonly orderError = signal('');
   readonly invalidFields = signal<string[]>([]);
-  readonly orderReceipt = signal<OrderReceipt | null>(null);
+  readonly orderReceipt = signal<OrderRecord | null>(null);
+
+  // Review Modal state
+  readonly reviewTarget = signal<{
+    productId: number;
+    productName: string;
+    orderCode: string;
+  } | null>(null);
+  reviewRating = 5;
+  reviewComment = '';
+  readonly submittingReview = signal(false);
 
   readonly optionChoices = ['Standard', 'S', 'M', 'L', 'XL'];
 
+  readonly activeProductReviews = computed(() => {
+    const prod = this.activeProduct();
+    if (!prod) return [];
+    return this.reviews().filter((r) => Number(r.productId) === Number(prod.id));
+  });
+
   private readonly handleOpenCartEvent = () => {
     this.openCartDrawer();
+  };
+
+  private readonly handleOpenOrdersEvent = () => {
+    this.activeTab.set('orders');
+    this.store.fetchBackendOrders();
   };
 
   readonly subtotal = computed(() => {
     if (this.checkoutMode() === 'buy-now') {
       const product = this.buyNowProduct();
       if (!product) return 0;
-      const safeQty = Math.max(1, Math.min(Number(this.quantity) || 1, product.stock || 1));
+      const safeQty = Math.max(1, Math.min(Number(this.quantity()) || 1, product.stock || 1));
       return product.price * safeQty;
     }
 
@@ -101,11 +125,15 @@ export class UserDashboard implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.restoreCartFromStorage();
     window.addEventListener('pulsemart-open-cart', this.handleOpenCartEvent);
+    window.addEventListener('pulsemart-open-orders', this.handleOpenOrdersEvent);
     this.loadStorefront();
+    this.store.fetchBackendOrders();
+    this.store.fetchBackendReviews();
   }
 
   ngOnDestroy(): void {
     window.removeEventListener('pulsemart-open-cart', this.handleOpenCartEvent);
+    window.removeEventListener('pulsemart-open-orders', this.handleOpenOrdersEvent);
   }
 
   private restoreCartFromStorage(): void {
@@ -131,7 +159,10 @@ export class UserDashboard implements OnInit, OnDestroy {
     this.errorMessage.set('');
 
     this.productService.getProducts(this.selectedCategory, this.search).subscribe({
-      next: () => this.loading.set(false),
+      next: () => {
+        this.store.applyStockOverridesToProducts();
+        this.loading.set(false);
+      },
       error: (err) => {
         this.loading.set(false);
         this.errorMessage.set(err?.error?.message || 'Unable to load products.');
@@ -146,10 +177,15 @@ export class UserDashboard implements OnInit, OnDestroy {
 
   openProduct(product: Product): void {
     this.activeProduct.set(product);
+    this.store.fetchBackendReviews();
   }
 
   closeProduct(): void {
     this.activeProduct.set(null);
+  }
+
+  getProductReviews(productId: number): ProductReview[] {
+    return this.reviews().filter((r) => Number(r.productId) === Number(productId));
   }
 
   // Cart Drawer controls
@@ -185,12 +221,7 @@ export class UserDashboard implements OnInit, OnDestroy {
     }
 
     this.saveCartToStorage(current);
-    this.cartToast.set(`${product.name} added to cart`);
-    setTimeout(() => {
-      if (this.cartToast() === `${product.name} added to cart`) {
-        this.cartToast.set('');
-      }
-    }, 2200);
+    this.showToast(`${product.name} added to cart`);
   }
 
   updateCartItemQty(index: number, delta: number): void {
@@ -224,7 +255,8 @@ export class UserDashboard implements OnInit, OnDestroy {
     this.resetCheckoutFeedback();
     this.checkoutMode.set('buy-now');
     this.buyNowProduct.set(product);
-    this.quantity = 1;
+    this.quantity.set(1);
+    this.customerName = localStorage.getItem('userName') || localStorage.getItem('name') || '';
     this.selectedOption = product.category === 'Fashion' ? 'M' : 'Standard';
     this.deliveryAddress = '';
     this.phoneNumber = '';
@@ -240,6 +272,7 @@ export class UserDashboard implements OnInit, OnDestroy {
     this.cartOpen.set(false);
     this.checkoutMode.set('cart');
     this.buyNowProduct.set(null);
+    this.customerName = localStorage.getItem('userName') || localStorage.getItem('name') || '';
     this.selectedOption = this.cartItems()[0]?.selectedOption || 'Standard';
     this.deliveryAddress = '';
     this.phoneNumber = '';
@@ -251,6 +284,12 @@ export class UserDashboard implements OnInit, OnDestroy {
     this.checkoutMode.set(null);
     this.buyNowProduct.set(null);
     this.resetCheckoutFeedback();
+  }
+
+  viewMyOrdersFromReceipt(): void {
+    this.closeCheckoutModal();
+    this.activeTab.set('orders');
+    this.store.fetchBackendOrders();
   }
 
   private resetCheckoutFeedback(): void {
@@ -270,24 +309,34 @@ export class UserDashboard implements OnInit, OnDestroy {
     return this.invalidFields().includes(field);
   }
 
-  onQuantityChange(): void {
+  onQuantityChange(newValue: number | string): void {
     const product = this.buyNowProduct();
     if (!product) return;
 
-    if (this.quantity < 1) {
-      this.quantity = 1;
-    } else if (this.quantity > product.stock) {
-      this.quantity = product.stock;
+    const parsed = Number(newValue);
+    if (!parsed || parsed < 1) {
+      this.quantity.set(1);
+    } else if (parsed > product.stock) {
+      this.quantity.set(product.stock);
+    } else {
+      this.quantity.set(Math.floor(parsed));
     }
   }
 
   confirmOrder(): void {
+    if (this.submittingOrder()) return;
+
     const badFields: string[] = [];
 
+    const trimmedName = this.customerName.trim();
     const trimmedAddress = this.deliveryAddress.trim();
     const cleanPhone = this.phoneNumber.replace(/\s+/g, '');
 
-    if (!trimmedAddress || trimmedAddress.length < 6) {
+    if (!trimmedName || trimmedName.length < 2) {
+      badFields.push('customerName');
+    }
+
+    if (!trimmedAddress || trimmedAddress.length < 5) {
       badFields.push('address');
     }
 
@@ -319,60 +368,146 @@ export class UserDashboard implements OnInit, OnDestroy {
 
     this.invalidFields.set([]);
     this.orderError.set('');
+    this.submittingOrder.set(true);
 
-    const orderId = 'PM-' + Math.floor(1000 + Math.random() * 9000);
+    const orderCode = 'PM-' + Math.floor(1000 + Math.random() * 9000);
+    const status: OrderRecord['status'] = this.paymentMethod === 'Card' ? 'Confirmed' : 'Pending';
+    const customerEmail = localStorage.getItem('userEmail') || localStorage.getItem('email') || '';
+
+    let orderItems: OrderItemLine[] = [];
+    let finalSubtotal = 0;
 
     if (this.checkoutMode() === 'buy-now') {
       const product = this.buyNowProduct();
-      if (!product) return;
+      if (!product) {
+        this.submittingOrder.set(false);
+        return;
+      }
 
-      const safeQty = Math.max(1, Math.min(Number(this.quantity) || 1, product.stock));
-      this.decrementProductStock(product.id, safeQty);
+      const safeQty = Math.max(1, Math.min(Number(this.quantity()) || 1, product.stock));
+      finalSubtotal = product.price * safeQty;
 
-      this.orderReceipt.set({
-        orderId,
-        itemsSummary: `${product.name} × ${safeQty}`,
-        totalPayable: this.totalPayable(),
-        deliveryFee: this.deliveryFee(),
-        paymentMethod: this.paymentMethod,
-        deliveryAddress: trimmedAddress,
-        phoneNumber: cleanPhone,
-        selectedOption: this.selectedOption,
-      });
+      orderItems = [
+        {
+          productId: product.id,
+          productName: product.name,
+          imageUrl: product.imageUrl,
+          quantity: safeQty,
+          unitPrice: product.price,
+        },
+      ];
     } else if (this.checkoutMode() === 'cart') {
       const items = this.cartItems();
-      items.forEach((item) => {
-        this.decrementProductStock(item.product.id, item.quantity);
-      });
+      finalSubtotal = items.reduce(
+        (sum, item) => sum + item.product.price * item.quantity,
+        0
+      );
 
-      const summaryText = items
-        .map((item) => `${item.product.name} × ${item.quantity}`)
-        .join(', ');
-
-      this.orderReceipt.set({
-        orderId,
-        itemsSummary: summaryText,
-        totalPayable: this.totalPayable(),
-        deliveryFee: this.deliveryFee(),
-        paymentMethod: this.paymentMethod,
-        deliveryAddress: trimmedAddress,
-        phoneNumber: cleanPhone,
-        selectedOption: this.selectedOption,
-      });
-
-      this.saveCartToStorage([]);
+      orderItems = items.map((item) => ({
+        productId: item.product.id,
+        productName: item.product.name,
+        imageUrl: item.product.imageUrl,
+        quantity: item.quantity,
+        unitPrice: item.product.price,
+      }));
     }
+
+    const finalDelivery = finalSubtotal > 10000 ? 0 : 450;
+    const finalTotal = finalSubtotal + finalDelivery;
+    const summaryText = orderItems
+      .map((item) => `${item.productName} × ${item.quantity}`)
+      .join(', ');
+
+    const payload: OrderRecord = {
+      orderCode,
+      orderId: orderCode,
+      customerName: trimmedName,
+      customerEmail,
+      items: orderItems,
+      itemsSummary: summaryText,
+      totalPayable: finalTotal,
+      deliveryFee: finalDelivery,
+      paymentMethod: this.paymentMethod,
+      deliveryAddress: trimmedAddress,
+      phoneNumber: cleanPhone,
+      selectedOption: this.selectedOption,
+      status,
+    };
+
+    this.store.createOrder(payload).subscribe({
+      next: (savedOrder) => {
+        this.submittingOrder.set(false);
+        this.orderReceipt.set(savedOrder);
+        if (this.checkoutMode() === 'cart') {
+          this.saveCartToStorage([]);
+        }
+      },
+      error: (err) => {
+        this.submittingOrder.set(false);
+        this.orderError.set(err?.error?.message || 'Failed to save order to database.');
+      },
+    });
   }
 
-  private decrementProductStock(productId: number | string, qty: number): void {
-    const updated = this.products().map((p) => {
-      if (p.id === productId) {
-        const nextStock = Math.max(0, (p.stock || 0) - qty);
-        return { ...p, stock: nextStock };
-      }
-      return p;
+  // Review Modal actions
+  openReviewModal(item: OrderItemLine, order: OrderRecord): void {
+    this.reviewTarget.set({
+      productId: item.productId,
+      productName: item.productName,
+      orderCode: order.orderCode || order.orderId || '',
     });
-    this.products.set(updated);
+    this.reviewRating = 5;
+    this.reviewComment = '';
+  }
+
+  closeReviewModal(): void {
+    this.reviewTarget.set(null);
+  }
+
+  submitProductReview(): void {
+    const target = this.reviewTarget();
+    if (!target || !this.reviewComment.trim() || this.submittingReview()) return;
+
+    const matchingOrder = this.orders().find(
+      (o) => (o.orderCode || o.orderId) === target.orderCode
+    );
+    const reviewerName =
+      matchingOrder?.customerName ||
+      localStorage.getItem('userName') ||
+      localStorage.getItem('name') ||
+      'Verified Buyer';
+
+    this.submittingReview.set(true);
+    this.store
+      .addReview({
+        productId: target.productId,
+        productName: target.productName,
+        orderCode: target.orderCode,
+        customerName: reviewerName,
+        reviewerName,
+        rating: Number(this.reviewRating),
+        comment: this.reviewComment.trim(),
+      })
+      .subscribe({
+        next: () => {
+          this.submittingReview.set(false);
+          this.reviewTarget.set(null);
+          this.showToast('Thank you! Your review is now live on the storefront.');
+        },
+        error: () => {
+          this.submittingReview.set(false);
+          this.showToast('Unable to submit review.');
+        },
+      });
+  }
+
+  private showToast(msg: string): void {
+    this.cartToast.set(msg);
+    setTimeout(() => {
+      if (this.cartToast() === msg) {
+        this.cartToast.set('');
+      }
+    }, 2500);
   }
 
   logout(): void {

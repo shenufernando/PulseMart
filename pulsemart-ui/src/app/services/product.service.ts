@@ -12,7 +12,7 @@ export type { Product };
 export class ProductService {
   private readonly http = inject(HttpClient);
   private readonly authService = inject(AuthService);
-  private readonly apiBase = 'http://localhost:5206';
+  readonly apiBase = 'http://localhost:5206';
   private readonly apiUrl = `${this.apiBase}/api/Products`;
 
   readonly products = signal<Product[]>([]);
@@ -79,7 +79,7 @@ export class ProductService {
       );
   }
 
-  private resolveImageUrl(imageUrl: string): string {
+  resolveImageUrl(imageUrl?: string | null): string {
     if (!imageUrl) return '';
     if (imageUrl.startsWith('http://') || imageUrl.startsWith('https://')) {
       return imageUrl;
@@ -87,7 +87,7 @@ export class ProductService {
     return `${this.apiBase}${imageUrl.startsWith('/') ? '' : '/'}${imageUrl}`;
   }
 
-  private getAuthHeaders(): HttpHeaders {
+  getAuthHeaders(): HttpHeaders {
     const token =
       this.authService.getToken() ||
       localStorage.getItem('pulsemart_token') ||
