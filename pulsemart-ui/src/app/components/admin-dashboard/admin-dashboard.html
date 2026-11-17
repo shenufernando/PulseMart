@@ -239,10 +239,10 @@
                 </tr>
               </thead>
               <tbody>
-                @for (order of orders(); track order.orderId) {
+                @for (order of orders(); track order.orderId || order.orderCode || order.id) {
                   <tr>
                     <td>
-                      <strong>{{ order.orderId }}</strong>
+                      <strong>{{ order.orderId || order.orderCode }}</strong>
                       <p class="sub-desc">{{ order.createdAt }}</p>
                     </td>
                     <td>
@@ -257,7 +257,7 @@
                     <td>
                       <select
                         [ngModel]="order.status"
-                        (ngModelChange)="changeOrderStatus(order.orderId, $event)"
+                        (ngModelChange)="changeOrderStatus(order.orderId || order.orderCode || '' + order.id, $event)"
                         style="padding: 6px 8px; border-radius: 8px; border: 1px solid #cbd5e1;"
                       >
                         <option value="Pending">Pending</option>
@@ -270,7 +270,7 @@
                       <button
                         type="button"
                         class="btn-danger"
-                        (click)="removeOrder(order.orderId)"
+                        (click)="removeOrder(order.orderId || order.orderCode || '' + order.id)"
                         title="Delete order and restore item stock"
                       >
                         Delete Order
@@ -297,7 +297,7 @@
           <strong class="kpi-value">{{ adminUsersCount() }}</strong>
         </div>
         <div class="kpi-card">
-          <span class="kpi-label">Customers / Users</span>
+          <span class="kpi-label">Customers</span>
           <strong class="kpi-value">{{ customerUsersCount() }}</strong>
         </div>
       </section>
@@ -315,15 +315,10 @@
               <input type="email" [(ngModel)]="u.email" />
             </div>
             <div class="field">
-              <label>Phone</label>
-              <input type="text" [(ngModel)]="u.phone" placeholder="07XXXXXXXX" />
-            </div>
-            <div class="field">
               <label>Role</label>
               <select [(ngModel)]="u.role">
-                <option value="ADMIN">ADMIN</option>
-                <option value="CUSTOMER">CUSTOMER</option>
-                <option value="USER">USER</option>
+                <option value="Admin">Admin</option>
+                <option value="Customer">Customer</option>
               </select>
             </div>
           </div>
@@ -342,7 +337,7 @@
               <tr>
                 <th>User ID</th>
                 <th>Name</th>
-                <th>Email & Phone</th>
+                <th>Email</th>
                 <th>Role</th>
                 <th>Joined</th>
                 <th>Action</th>
@@ -353,15 +348,12 @@
                 <tr>
                   <td><strong>{{ user.id }}</strong></td>
                   <td><strong>{{ user.name }}</strong></td>
-                  <td>
-                    <span>{{ user.email }}</span>
-                    <p class="sub-desc">{{ user.phone || 'No phone' }}</p>
-                  </td>
+                  <td>{{ user.email }}</td>
                   <td>
                     <span
                       class="tag"
-                      [style.background]="user.role === 'ADMIN' ? '#dbeafe' : '#dcfce7'"
-                      [style.color]="user.role === 'ADMIN' ? '#1d4ed8' : '#166534'"
+                      [style.background]="user.role === 'Admin' ? '#dbeafe' : '#dcfce7'"
+                      [style.color]="user.role === 'Admin' ? '#1d4ed8' : '#166534'"
                     >
                       {{ user.role }}
                     </span>

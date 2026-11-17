@@ -98,7 +98,10 @@ export class AdminDashboard implements OnInit {
   }
 
   getProductName(productId: number): string {
-    return this.products().find((p) => Number(p.id) === Number(productId))?.name || `Product #${productId}`;
+    return (
+      this.products().find((p) => Number(p.id) === Number(productId))?.name ||
+      `Product #${productId}`
+    );
   }
 
   onFileSelected(event: Event): void {
@@ -144,7 +147,13 @@ export class AdminDashboard implements OnInit {
     this.successMessage.set('');
     this.errorMessage.set('');
 
-    if (!this.name.trim() || this.price === null || this.price <= 0 || this.stock === null || this.stock < 0) {
+    if (
+      !this.name.trim() ||
+      this.price === null ||
+      this.price <= 0 ||
+      this.stock === null ||
+      this.stock < 0
+    ) {
       this.errorMessage.set('Please enter a valid item name, price, and stock quantity.');
       return;
     }
@@ -222,13 +231,13 @@ export class AdminDashboard implements OnInit {
   // =========================================================
   // ORDERS MANAGEMENT ACTIONS (SQL Server Sync)
   // =========================================================
-  changeOrderStatus(order: OrderRecord, status: OrderRecord['status']): void {
-    this.store.updateOrderStatus(order.id ?? order.orderCode ?? order.orderId ?? '', status);
+  changeOrderStatus(orderId: string | number, status: OrderRecord['status']): void {
+    this.store.updateOrderStatus(orderId, status);
   }
 
-  removeOrder(order: OrderRecord): void {
+  removeOrder(orderId: string | number): void {
     // Deletes the order, increments Deleted Orders counter, and restores item stock
-    this.store.deleteOrder(order.id ?? order.orderCode ?? order.orderId ?? '', true);
+    this.store.deleteOrder(orderId, true);
   }
 
   // =========================================================
